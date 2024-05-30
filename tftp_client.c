@@ -104,7 +104,7 @@ void send_file(int sockfd, struct sockaddr_in *server_addr, socklen_t server_len
     int block_num = 0;
     ssize_t bytes_read, bytes_sent, bytes_received;
     struct timeval timeout;
-    timeout.tv_sec = 1;  // 1 second timeout
+    timeout.tv_sec = 1; // 1 second timeout
     timeout.tv_usec = 0;
 
     // Wait for initial ACK from server
@@ -157,7 +157,7 @@ void send_file(int sockfd, struct sockaddr_in *server_addr, socklen_t server_len
             printf("Block %d sent, waiting for ACK\n", block_num);
 
             // Set socket timeout for ACK
-            setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+            setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
 
             bytes_received = recvfrom(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *)server_addr, &server_len);
             if (bytes_received < 0)
@@ -168,7 +168,7 @@ void send_file(int sockfd, struct sockaddr_in *server_addr, socklen_t server_len
             }
 
             int opcode = buffer[1];
-            int recv_block_num = (buffer[2] << 8) | buffer[3];
+            int recv_block_num = ((buffer[2] << 8) | (buffer[3] & 0x0FF));
 
             if (opcode == OP_ACK && recv_block_num == block_num)
             {

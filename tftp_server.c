@@ -101,8 +101,8 @@ void handle_wrq(int sockfd, struct sockaddr_in *client_addr, socklen_t client_le
         }
 
         int opcode = buffer[1];
-        int recv_block_num = (buffer[2] << 8) | buffer[3];
-
+        // int recv_block_num = (unsigned int)(buffer[2] << 8) | (unsigned int)buffer[3];
+        int recv_block_num = ((buffer[2] << 8) | (buffer[3] & 0x0FF));
         if (opcode == OP_DATA && recv_block_num == block_num + 1)
         {
             bytes_written = write(fd, buffer + 4, bytes_received - 4);
@@ -128,6 +128,10 @@ void handle_wrq(int sockfd, struct sockaddr_in *client_addr, socklen_t client_le
             fprintf(stderr, "Error from client: %s\n", buffer + 4);
             close(fd);
             return;
+        }
+        else
+        {
+            printf("rec block num: %d\n", recv_block_num);
         }
     }
 
