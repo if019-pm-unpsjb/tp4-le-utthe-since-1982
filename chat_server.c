@@ -268,11 +268,14 @@ void receive_file(int sockfd, const char *filename)
         close(file_fd);
         return;
     }
+    else
+    {
+        // Send acknowledgment
+        send(sockfd, "SIZE RECEIVED", strlen("SIZE RECEIVED"), 0);
+    }
+
     long file_size = atol(buffer);
     long total_received = 0;
-
-    // Send acknowledgment
-    send(sockfd, "SIZE RECEIVED", strlen("SIZE RECEIVED"), 0);
 
     // Receive file data
     while (total_received < file_size)
