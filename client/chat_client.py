@@ -1,6 +1,3 @@
-# File: tcp_chat_client.py
-# Redes
-
 import socket
 import threading
 import sys
@@ -8,8 +5,6 @@ import signal
 import os
 import time
 
-# SERVER_IP = "127.0.0.1"
-# SERVER_PORT = 8080
 BUFFER_SIZE = 1024
 
 
@@ -17,13 +12,11 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
-# Register the signal handler for SIGINT (Ctrl+C)
 signal.signal(signal.SIGINT, signal_handler)
 
 
 def send_messages(client_socket, name):
     while True:
-        # print(f"> ", end="")  # Print name and ">" with no newline
         message = input()
         if message.lower() == "exit":
             client_socket.sendall(message.encode("utf-8"))
@@ -31,10 +24,31 @@ def send_messages(client_socket, name):
             client_socket.close()
             sys.exit()
         if message.lower().startswith("file: "):
-            # Extract the filename after removing "file: " prefix
             filename = message[6:]
+            send_file = "file: " + filename
             print(f"Sending: {filename}")
-            client_socket.sendall(message.encode("utf-8"))
+            try:
+                client_socket.sendall(send_file.encode("utf-8"))
+                time.sleep(1)
+
+                # Get the file size and send it
+                file_size = os.path.getsize(filename)
+                client_socket.sendall(str(file_size).encode("utf-8"))
+
+                # Wait for acknowledgment before sending file data
+                ack = client_socket.recv(BUFFER_SIZE).decode("utf-8")
+                if ack != "SIZE RECEIVED":
+                    print("Failed to receive acknowledgment from server")
+                    continue
+                with open(filename, "rb") as file:
+                    while True:
+                        bytes_read = file.read(BUFFER_SIZE)
+                        if not bytes_read:
+                            break
+                        client_socket.sendall(bytes_read)
+                print(f"File {filename} sent successfully")
+            except Exception as e:
+                print(f"Failed to send file {filename}: {str(e)}")
         else:
             n = "[" + name + "]: "
             message = n + message
@@ -49,15 +63,34 @@ def receive_messages(client_socket):
                 print("Disconnected from chat server")
                 client_socket.close()
                 sys.exit()
-            print(message)
+            if message.startswith("SENDING_FILE"):
+                receive_file(client_socket, message)
+            else:
+                print(message)
         except Exception as e:
             print(f"Error: {str(e)}")
             client_socket.close()
             sys.exit()
 
 
-def main():
+def receive_file(client_socket, message):
+    DELIMITER = "#"
+    file_size = int(message.split(DELIMITER)[1])
+    file_name = message[len("SENDING_FILE") : message.find(DELIMITER)]
+    client_socket.sendall(b"ready")
+    with open(file_name, "wb") as f:
+        total_received = 0
+        while total_received < file_size:
+            data = client_socket.recv(BUFFER_SIZE)
+            if not data:
+                break
+            f.write(data)
+            total_received += len(data)
+            print(f"Received {total_received} of {file_size} bytes")
+    print("File received.")
 
+
+def main():
     if len(sys.argv) != 3:
         print("Usage: python3 script.py <server_ip> <server_port>")
         sys.exit(1)
@@ -75,11 +108,9 @@ def main():
 
     print("Type 'exit' then Ctrl+C to exit")
 
-    # Send the client's name
     name = input("Enter your name: ")
     client_socket.sendall(name.encode("utf-8"))
 
-    # Create threads for sending and receiving messages
     send_thread = threading.Thread(target=send_messages, args=(client_socket, name))
     receive_thread = threading.Thread(target=receive_messages, args=(client_socket,))
 

@@ -66,7 +66,6 @@ void handle_rrq(int sockfd, struct sockaddr_in *client_addr, socklen_t client_le
         // Wait for ACK
         char ack_buffer[BUF_SIZE];
         recvfrom(sockfd, ack_buffer, BUF_SIZE, 0, (struct sockaddr *)client_addr, &client_len);
-        // Here we should validate the ACK, but for simplicity, we assume it’s correct.
 
     } while (bytes_read == DATA_SIZE);
 
