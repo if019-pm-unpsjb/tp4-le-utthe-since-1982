@@ -72,6 +72,7 @@ void receive_file(int sockfd, struct sockaddr_in *server_addr, socklen_t server_
                 // Last packet received
                 break;
             }
+            printf("Block %d received.\n", block_num);
         }
         else if (opcode == OP_ERROR)
         {

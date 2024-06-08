@@ -6,6 +6,7 @@ import os
 import time
 
 BUFFER_SIZE = 1024
+DELIMITER = "#"
 
 
 def signal_handler(sig, frame):
@@ -26,18 +27,16 @@ def send_messages(client_socket, name):
         if message.lower().startswith("file: "):
             filename = message[6:]
             send_file = "file: " + filename
-            print(f"Sending: {filename}")
             try:
-                client_socket.sendall(send_file.encode("utf-8"))
-                time.sleep(1)
-
                 # Get the file size and send it
                 file_size = os.path.getsize(filename)
-                client_socket.sendall(str(file_size).encode("utf-8"))
+                send_file += DELIMITER + str(file_size)
+                print(f"Sending: {filename} {file_size}")
+                client_socket.sendall(send_file.encode("utf-8"))
 
                 # Wait for acknowledgment before sending file data
-                ack = client_socket.recv(BUFFER_SIZE).decode("utf-8")
-                if ack != "SIZE RECEIVED":
+                ack = client_socket.recv(len(b"sr")).decode("utf-8")
+                if ack != "sr":
                     print("Failed to receive acknowledgment from server")
                     continue
                 with open(filename, "rb") as file:
@@ -74,7 +73,6 @@ def receive_messages(client_socket):
 
 
 def receive_file(client_socket, message):
-    DELIMITER = "#"
     file_size = int(message.split(DELIMITER)[1])
     file_name = message[len("SENDING_FILE") : message.find(DELIMITER)]
     client_socket.sendall(b"ready")
@@ -86,7 +84,7 @@ def receive_file(client_socket, message):
                 break
             f.write(data)
             total_received += len(data)
-            print(f"Received {total_received} of {file_size} bytes")
+        print(f"Received {total_received} of {file_size} bytes")
     print("File received.")
 
 

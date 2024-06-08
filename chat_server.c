@@ -30,7 +30,7 @@ void add_client(client_t *cl);
 void remove_client(int uid);
 void send_message(char *s, int uid);
 void *handle_client(void *arg);
-void receive_file(int sockfd, const char *filename);
+void receive_file(int sockfd, const char *filename, long file_size);
 void send_file(const char *filename, int uid);
 
 static int uid = 10;
@@ -97,12 +97,6 @@ int main(int argc, char *argv[])
     }
 
     return EXIT_SUCCESS;
-}
-
-void error(const char *msg)
-{
-    perror(msg);
-    exit(1);
 }
 
 void add_client(client_t *cl)
@@ -187,12 +181,16 @@ void send_file(const char *filename, int uid)
     }
     char file_size_str[20]; // Adjust size based on your integer range
     sprintf(file_size_str, "%c%ld", DELIMITER, file_size);
-
     size_t filename_length = strlen(filename);
+
+    // Make a string with all the file data
+    int file_info_len = strlen("SENDING_FILE") + filename_length + strlen(file_size_str);
+    char file_info[file_info_len];
+    sprintf(file_info, "%s%s%s", "SENDING_FILE", filename, file_size_str);
 
     pthread_mutex_lock(&clients_mutex);
 
-    printf("Trying to send: %s %ld\n", filename, file_size);
+    // printf("Trying to send: %s %ld\n", filename, file_size);
 
     for (int i = 0; i < MAX_CLIENTS; ++i)
     {
@@ -200,20 +198,8 @@ void send_file(const char *filename, int uid)
         {
             if (clients[i]->uid != uid)
             {
-                if (send(clients[i]->sockfd, "SENDING_FILE", strlen("SENDING_FILE"), 0) == -1)
-                {
-                    perror("ERROR: Write to descriptor failed");
-                    break;
-                }
-
-                // Send file name
-                if (send(clients[i]->sockfd, filename, filename_length, 0) == -1)
-                {
-                    perror("send");
-                }
-
-                // Send file size
-                if (send(clients[i]->sockfd, file_size_str, strlen(file_size_str), 0) == -1)
+                // Send file data
+                if (send(clients[i]->sockfd, file_info, strlen(file_info), 0) == -1)
                 {
                     perror("send");
                     break;
@@ -225,7 +211,7 @@ void send_file(const char *filename, int uid)
                 // Send the file IF the signal arrived
                 if (strcmp(ready_msg, "ready") == 0)
                 {
-                    printf("Ready to send the file.\n");
+                    printf("Ready to send %s.\n", filename);
                     // Send the file
                     while (total_sent < file_size)
                     {
@@ -246,11 +232,11 @@ void send_file(const char *filename, int uid)
     pthread_mutex_unlock(&clients_mutex);
 }
 
-void receive_file(int sockfd, const char *filename)
+void receive_file(int sockfd, const char *filename, long file_size)
 {
     char buffer[BUFFER_SIZE];
     int n;
-
+    char size_received[3] = "sr";
     // Create file
     int file_fd = open(filename, O_WRONLY | O_CREAT, 0666);
     if (file_fd < 0)
@@ -259,22 +245,10 @@ void receive_file(int sockfd, const char *filename)
         return;
     }
 
-    // Receive file size
+    // Send signal to start receiving the file
     bzero(buffer, BUFFER_SIZE);
-    n = recv(sockfd, buffer, BUFFER_SIZE, 0);
-    if (n <= 0)
-    {
-        perror("ERROR: Receive file size");
-        close(file_fd);
-        return;
-    }
-    else
-    {
-        // Send acknowledgment
-        send(sockfd, "SIZE RECEIVED", strlen("SIZE RECEIVED"), 0);
-    }
+    send(sockfd, size_received, sizeof(size_received), 0);
 
-    long file_size = atol(buffer);
     long total_received = 0;
 
     // Receive file data
@@ -339,9 +313,13 @@ void *handle_client(void *arg)
             {
                 if (strncmp(buffer, "file: ", 6) == 0)
                 {
-                    char *filename = buffer + 6;
-                    printf("Receiving file: %s\n", filename);
-                    receive_file(cli->sockfd, filename);
+                    char filename[40]; // Buffer to store the filename
+                    long file_size;    // Variable to store the file size
+
+                    // Use sscanf to extract the filename and file size
+                    sscanf(buffer, "file: %[^#]#%ld", filename, &file_size);
+                    printf("Receiving file: %s %ld\n", filename, file_size);
+                    receive_file(cli->sockfd, filename, file_size);
                     send_file(filename, cli->uid);
                 }
                 else
