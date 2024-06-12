@@ -29,15 +29,24 @@ Procesa comandos especiales como solicitudes de transferencia de archivos.
 ## Transferencia de Archivos
 
 - El cliente inicia la transferencia enviando un comando especial:
+
   > file: nombre_del_archivo
+
 - Envía la información del archivo:
 - El servidor detecta que el cliente desea enviar un archivo (mensaje comenzado con “file: <nombre_del_archivo>”)
+
   > Aquí comienza el proceso de recepción del archivo de parte del servidor.
+
   > Después de recibir la info del archivo, el servidor envía una señal para indicarle al cliente que comience a enviar el contenido del archivo (“sr”)
+
   > Cuando el cliente recibe la señal “sr” comienza el envio del contenido.
+
 - Cuando el servidor recibe la totalidad del archivo, comienza el envio al resto de los clientes:
+
   > Envía la información del archivo con el siguiente formato: SENDING_FILE nombre_del_archivo #tamaño_del_archivo
+
   > El cliente recibe la información y manda una señal (“ready”) para que el servidor comience a enviar el contenido del archivo
+
 - Una vez que el cliente recibe la totalidad del archivo, imprime por pantalla un mensaje indicando que el archivo fue recibido de manera exitosa.
 
 ## Manejo de Errores y Desconexiones
@@ -60,11 +69,13 @@ Envía un mensaje de salida para desconectarse del servidor:
 #### Cliente A se conecta:
 
 > Cliente → Servidor: Alice
+
 > Servidor → Todos los clientes: Alice has joined
 
 #### Cliente A envía un mensaje:
 
 > Cliente → Servidor: [Alice]: Hola a todos!
+
 > Servidor → Todos los clientes: [Alice]: Hola a todos!
 
 ### Transferencia de Archivos
@@ -72,8 +83,11 @@ Envía un mensaje de salida para desconectarse del servidor:
 #### Cliente A quiere enviar un archivo:
 
 > Cliente → Servidor: file: documento.pdf
+
 > Cliente → Servidor: file: documento.pdf#12345 (tamaño del archivo en bytes)
+
 > Servidor → Cliente A: sr
+
 > Cliente A → Servidor: (envía datos del archivo en bloques de 1024 bytes)
 
 #### Servidor notifica a los otros clientes:
