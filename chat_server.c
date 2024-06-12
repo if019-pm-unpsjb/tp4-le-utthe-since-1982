@@ -32,6 +32,7 @@ void send_message(char *s, int uid);
 void *handle_client(void *arg);
 void receive_file(int sockfd, const char *filename, long file_size);
 void send_file(const char *filename, int uid);
+void send_file_func(int uid, const char *filename, long file_size);
 
 static int uid = 10;
 
@@ -81,6 +82,7 @@ int main(int argc, char *argv[])
     {
         socklen_t clilen = sizeof(client_addr);
         newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, &clilen);
+        printf("****accept*******");
 
         // Client settings
         client_t *cli = (client_t *)malloc(sizeof(client_t));
@@ -158,16 +160,8 @@ void send_message(char *s, int uid)
 
 void send_file(const char *filename, int uid)
 {
+    printf("--------send_file-------------");
     char ready_msg[6];
-    off_t offset = 0;
-    ssize_t sent_bytes = 0;
-    size_t total_sent = 0;
-
-    int fd = open(filename, O_RDONLY);
-    if (fd < 0)
-    {
-        perror("open failed");
-    }
 
     struct stat file_stat;
     off_t file_size;
@@ -211,19 +205,7 @@ void send_file(const char *filename, int uid)
                 // Send the file IF the signal arrived
                 if (strcmp(ready_msg, "ready") == 0)
                 {
-                    printf("Ready to send %s.\n", filename);
-                    // Send the file
-                    while (total_sent < file_size)
-                    {
-                        sent_bytes = sendfile(clients[i]->sockfd, fd, &offset, file_size - total_sent);
-                        if (sent_bytes == -1)
-                        {
-                            perror("sendfile");
-                            close(fd);
-                            exit(EXIT_FAILURE);
-                        }
-                        total_sent += sent_bytes;
-                    }
+                    send_file_func(i, filename, file_size);
                 }
             }
         }
@@ -232,8 +214,34 @@ void send_file(const char *filename, int uid)
     pthread_mutex_unlock(&clients_mutex);
 }
 
+void send_file_func(int uid, const char *filename, long file_size)
+{
+    off_t offset = 0;
+    ssize_t sent_bytes = 0;
+    size_t total_sent = 0;
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0)
+    {
+        perror("open failed");
+    }
+    printf("(send_file_func)Ready to send %s.\n", filename);
+    // Send the file
+    while (total_sent < file_size)
+    {
+        sent_bytes = sendfile(clients[uid]->sockfd, fd, &offset, file_size - total_sent);
+        if (sent_bytes == -1)
+        {
+            perror("sendfile");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+        total_sent += sent_bytes;
+    }
+}
+
 void receive_file(int sockfd, const char *filename, long file_size)
 {
+    printf("--------------receive file----------------\n");
     char buffer[BUFFER_SIZE];
     int n;
     char size_received[3] = "sr";

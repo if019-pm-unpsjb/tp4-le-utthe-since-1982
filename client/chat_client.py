@@ -27,31 +27,42 @@ def send_messages(client_socket, name):
         if message.lower().startswith("file: "):
             filename = message[6:]
             send_file = "file: " + filename
-            try:
-                # Get the file size and send it
-                file_size = os.path.getsize(filename)
-                send_file += DELIMITER + str(file_size)
-                print(f"Sending: {filename} {file_size}")
-                client_socket.sendall(send_file.encode("utf-8"))
-
-                # Wait for acknowledgment before sending file data
-                ack = client_socket.recv(len(b"sr")).decode("utf-8")
-                if ack != "sr":
-                    print("Failed to receive acknowledgment from server")
-                    continue
-                with open(filename, "rb") as file:
-                    while True:
-                        bytes_read = file.read(BUFFER_SIZE)
-                        if not bytes_read:
-                            break
-                        client_socket.sendall(bytes_read)
-                print(f"File {filename} sent successfully")
-            except Exception as e:
-                print(f"Failed to send file {filename}: {str(e)}")
+            # try:
+            # Get the file size and send it
+            file_size = os.path.getsize(filename)
+            send_file += DELIMITER + str(file_size)
+            print(f"Sending: {filename} {file_size}")
+            client_socket.sendall(send_file.encode("utf-8"))
+            # Wait for acknowledgment before sending file data
+            ack = client_socket.recv(len(b"sr")).decode("utf-8")
+            print("+++++ack received++++")
+            # if ack != "sr":
+            #    print("Failed to receive acknowledgment from server")
+            #    continue
+            if ack == "sr":
+                send_file_func(filename, client_socket)
+            else:
+                client_socket.close()
+                sys.exit()
+            # except Exception as e:
+            #    print(f"Failed to send file {filename}: {str(e)}")
         else:
             n = "[" + name + "]: "
             message = n + message
             client_socket.sendall(message.encode("utf-8"))
+
+
+def send_file_func(filename, client_socket):
+    # START_RECEIVING = "ack"
+    print("ENTERING SEND FILE FUNC---------")
+    # client_socket.sendall(b'ack')
+    with open(filename, "rb") as file:
+        while True:
+            bytes_read = file.read(BUFFER_SIZE)
+            if not bytes_read:
+                break
+            client_socket.sendall(bytes_read)
+    print(f"File {filename} sent successfully")
 
 
 def receive_messages(client_socket):
